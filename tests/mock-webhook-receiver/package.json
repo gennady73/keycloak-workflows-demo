@@ -1,0 +1,12 @@
+{
+  "name": "mock-webhook-receiver",
+  "version": "1.0.0",
+  "description": "Mock receiver to capture and inspect outbound Keycloak Workflow webhook events",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

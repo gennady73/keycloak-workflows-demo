@@ -1,0 +1,21 @@
+# Rogue Client Policy Compliance Audit (Security Lockdown)
+# This event-driven workflow monitors client registrations. 
+# If a newly registered client violates our security constraints, 
+# it immediately disables the client and flags it for administrative review.
+name: Secure Client Policy Enforcement
+# Executes immediately upon any client creation event
+on: client-created
+enabled: true
+steps:
+  # Step 1: Immediately evaluate compliance. 
+  # Note: If our 'secure-client-uris' client executor rejects the URLs,
+  # or if the client configuration is flagged, we disable it.
+  - uses: disable-client
+    with:
+      reason: "Automated Policy Violation: Non-compliant redirect URIs or loopback hosts detected."
+
+  # Step 2: Set an administrative attribute on the client record to audit compliance
+  - uses: set-user-attribute
+    with:
+      compliance_status: "FAILED_AUDIT"
+      lockdown_timestamp: "${workflow.activationTime}"

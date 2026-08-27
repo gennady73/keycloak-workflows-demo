@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Datacenter A (Primary Site / Port 8080)
+  # ==========================================
+  postgres-dc-a:
+    image: postgres:15-alpine
+    container_name: postgres-dc-a
+    environment:
+      POSTGRES_DB: keycloak_dc_a
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - postgres_data_a:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_dc_a"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak-dc-a:
+    image: quay.io/keycloak/keycloak:26.6.2
+    container_name: keycloak-dc-a
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      # Keycloak 26+ uses bootstrap admin credentials
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      # Mount configuration file
+      - ./keycloak-dc-a.conf:/opt/keycloak/conf/keycloak.conf:ro
+      # Mount custom compiled SPI event listener
+      - ../spi-listener/target/workflows-audit-listener-1.0.0-SNAPSHOT.jar:/opt/keycloak/providers/workflows-audit-listener.jar:ro
+    depends_on:
+      postgres-dc-a:
+        condition: service_healthy
+
+  # ==========================================
+  # Datacenter B (Secondary Site / Port 8081)
+  # ==========================================
+  postgres-dc-b:
+    image: postgres:15-alpine
+    container_name: postgres-dc-b
+    environment:
+      POSTGRES_DB: keycloak_dc_b
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - postgres_data_b:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_dc_b"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak-dc-b:
+    image: quay.io/keycloak/keycloak:26.6.2
+    container_name: keycloak-dc-b
+    command: start-dev
+    ports:
+      - "8081:8081"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      # Mount configuration file
+      - ./keycloak-dc-b.conf:/opt/keycloak/conf/keycloak.conf:ro
+      # Mount custom compiled SPI event listener
+      - ../spi-listener/target/workflows-audit-listener-1.0.0-SNAPSHOT.jar:/opt/keycloak/providers/workflows-audit-listener.jar:ro
+    depends_on:
+      postgres-dc-b:
+        condition: service_healthy
+
+volumes:
+  postgres_data_a:
+    driver: local
+  postgres_data_b:
+    driver: local

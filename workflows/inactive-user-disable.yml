@@ -1,0 +1,42 @@
+# Symmetrical Inactive User Disabling Workflow (With Sync Trigger)
+# This scheduled workflow sweep monitors user activity, notifies them, and disables them. 
+# Our custom listener JAR will capture the successful disable-user execution and duplicate 
+# the deactivation state to the secondary site.
+name: Track and Disable Inactive Users
+# Initiated upon authentication to refresh the session state tracker
+on: user-authenticated
+concurrency:
+  # Reset the inactivity timeline if the user logs in again during an active run
+  restart-in-progress: true
+enabled: true
+steps:
+  # Step 1: Send warning after 180 days of inactivity
+  - uses: notify-user
+    after: 180d
+    with:
+      subject: Inactive Account Warning
+      message: |
+        <p>Dear ${user.firstName},</p>
+        <p>Your account has been inactive for 180 days. Please log in to prevent account deactivation.</p>
+  
+  # Step 2: Send final warning after another 60 days (240 days total)
+  - uses: notify-user
+    after: 60d
+    with:
+      subject: Urgent: Account Deactivation Notice
+      message: |
+        <p>Dear ${user.firstName},</p>
+        <p>Your account has remained inactive and will be disabled in ${workflow.daysUntilNextStep} days.</p>
+
+  # Step 3: Disable user after another 7 days (247 days total)
+  # NOTE: When this succeeds, our Event Listener JAR intercepts the completion event 
+  # and disables the corresponding shadow user record in the other datacenter.
+  - uses: disable-user
+    after: 7d
+
+  # Step 4: Final confirmation email
+  - uses: notify-user
+    with:
+      subject: Account Deactivated
+      message: |
+        <p>Your account has been administratively deactivated due to inactivity.</p>

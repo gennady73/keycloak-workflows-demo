@@ -1,0 +1,45 @@
+---
+# Tasks file to parse a single YAML workflow and upload it via Keycloak Admin REST API
+- name: Read Workflow File Content
+  ansible.builtin.slurpf:
+    src: "{{ workflow_file.path }}"
+  register: workflow_raw
+
+- name: Convert YAML Content to Structured JSON
+  ansible.builtin.set_fact:
+    workflow_json: "{{ (workflow_raw.content | b64decode) | from_yaml }}"
+
+- name: Determine if Workflow Already Exists on Server
+  ansible.builtin.uri:
+    url: "{{ rhbk_admin_url }}/admin/realms/{{ rhbk_realm }}/workflows/{{ workflow_json.name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ admin_token }}"
+      Accept: "application/json"
+    status_code: [200, 404]
+    validate_certs: false
+  register: existing_workflow
+
+- name: Create New Workflow (POST)
+  ansible.builtin.uri:
+    url: "{{ rhbk_admin_url }}/admin/realms/{{ rhbk_realm }}/workflows"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ admin_token }}"
+      Content-Type: "application/json"
+    body: "{{ workflow_json | to_json }}"
+    status_code: 201
+    validate_certs: false
+  when: existing_workflow.status == 404
+
+- name: Update Existing Workflow (PUT)
+  ansible.builtin.uri:
+    url: "{{ rhbk_admin_url }}/admin/realms/{{ rhbk_realm }}/workflows/{{ workflow_json.name | urlencode }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ admin_token }}"
+      Content-Type: "application/json"
+    body: "{{ workflow_json | to_json }}"
+    status_code: 204
+    validate_certs: false
+  when: existing_workflow.status == 200

@@ -1,0 +1,50 @@
+---
+- name: Synchronize Declarative Workflows to Keycloak Staging
+  hosts: localhost
+  gather_facts: false
+  vars:
+    # Keycloak Admin Connection Details
+    rhbk_admin_url: "https://keycloak-staging.internal:8443"
+    rhbk_realm: "staging-realm"
+    rhbk_admin_realm: "master"
+    rhbk_admin_client: "admin-cli"
+    
+    # Credentials (Use Vault/Environment variables in production)
+    rhbk_admin_user: "admin"
+    rhbk_admin_password: "admin-password"
+
+    # Directory containing our declarative YAML workflow templates
+    workflow_templates_dir: "./workflows"
+
+  tasks:
+    - name: Authenticate with RHBK Admin REST API (Acquire Access Token)
+      ansible.builtin.uri:
+        url: "{{ rhbk_admin_url }}/realms/{{ rhbk_admin_realm }}/protocol/openid-connect/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: "password"
+          client_id: "{{ rhbk_admin_client }}"
+          username: "{{ rhbk_admin_user }}"
+          password: "{{ rhbk_admin_password }}"
+        status_code: 200
+        validate_certs: false
+      register: auth_response
+
+    - name: Set Admin Access Token Fact
+      ansible.builtin.set_fact:
+        admin_token: "{{ auth_response.json.access_token }}"
+
+    - name: Locate Declarative YAML Workflow Files
+      ansible.builtin.find:
+        paths: "{{ workflow_templates_dir }}"
+        patterns: "*.yml,*.yaml"
+      register: workflow_files
+
+    - name: Parse and Push Workflows to Keycloak REST API
+      ansible.builtin.include_tasks:
+        file: sync_individual_workflow.yml
+      loop: "{{ workflow_files.files }}"
+      loop_control:
+        loop_var: workflow_file
+      when: workflow_files.matched > 0

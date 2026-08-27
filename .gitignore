@@ -1,0 +1,28 @@
+# Compiled Java Classes
+**/target/
+*.class
+*.jar
+
+# Node Modules & Package Logs
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ansible Runtime Temp files
+*.retry
+.ansible_cache/
+
+# IDE Configurations
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Local DB Directories
+docker/postgres_data_a/
+docker/postgres_data_b/
+
+# Certificates and keys
+*.pem
+*.key

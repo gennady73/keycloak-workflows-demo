@@ -1,0 +1,20 @@
+# Automatically verified for syntactical compliance before it can be merged.
+name: Validate Keycloak Workflows Schema
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate YAML Syntax
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: workflows/
+          config_file: .yamllint
